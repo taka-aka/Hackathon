@@ -1,0 +1,106 @@
+import streamlit as st
+import requests
+import time
+import random
+
+# --- 設定 ---
+BACKEND_URL = "http://127.0.0.1:8000/generate_minutes"
+
+st.set_page_config(page_title="トーク", page_icon="💬")
+
+# --- CSS ---
+st.markdown("""
+    <style>
+    .stApp { background-color: #7494C0; }
+    div[data-testid="stChatMessage"] { background-color: transparent !important; }
+    div[data-testid="stChatMessage"]:has(div[aria-label="Chat message from user"]) { flex-direction: row-reverse; text-align: right; }
+    div[data-testid="stChatMessage"]:has(div[aria-label="Chat message from user"]) div[data-testid="stMarkdownContainer"] {
+        background-color: #8DE055; color: #000; padding: 10px 15px; border-radius: 15px 15px 2px 15px; display: inline-block; margin-right: 10px;
+    }
+    div[data-testid="stChatMessage"]:has(div[aria-label="Chat message from assistant"]) div[data-testid="stMarkdownContainer"] {
+        background-color: #FFFFFF; color: #000; padding: 10px 15px; border-radius: 15px 15px 15px 2px; display: inline-block; margin-left: 10px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+if "response_index" not in st.session_state:
+    st.session_state.response_index = 0
+
+# --- 【完全雑談】固定の返答リスト ---
+# 誘導する言葉を一切排除し、日常の会話っぽくしています
+FIXED_BUDDY_RESPONSES = [
+    "おー、お疲れ！今日なんかあった？",
+    "マジか、それは予想外だわw",
+    "あーね。それめっちゃわかる気がする。",
+    "へぇ〜、それでその後どうなったん？",
+    "なるほど。まあ、なんとかなりそうじゃん！",
+    "いい感じだね。また後で詳しく教えてよ！"
+]
+
+def buddy_typing(text):
+    with st.chat_message("assistant", avatar="😎"):
+        placeholder = st.empty()
+        full_response = ""
+        for char in text:
+            full_response += char
+            placeholder.markdown(full_response + "▌")
+            # 友達がスマホを打つようなランダムな速さ
+            time.sleep(random.uniform(0.02, 0.06))
+        placeholder.markdown(full_response)
+    return full_response
+
+# 履歴表示
+for message in st.session_state.messages:
+    avatar = "👤" if message["role"] == "user" else "😎"
+    with st.chat_message(message["role"], avatar=avatar):
+        st.markdown(message["content"])
+
+# --- チャット入力 ---
+if prompt := st.chat_input("メッセージを入力"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user", avatar="👤"):
+        st.markdown(prompt)
+
+    # 固定の雑談返答
+    if st.session_state.response_index < len(FIXED_BUDDY_RESPONSES):
+        response_text = FIXED_BUDDY_RESPONSES[st.session_state.response_index]
+        st.session_state.response_index += 1
+    else:
+        # リストを使い切ったら適当な相槌
+        response_text = "うんうん、わかるよ。"
+
+    final_text = buddy_typing(response_text)
+    st.session_state.messages.append({"role": "assistant", "content": final_text})
+
+# --- サイドバー ---
+#議事録作成ボタンと会話リセットぼたん
+with st.sidebar:
+    st.write("---")
+    st.write("メニュー")
+    if st.button("✨ 議事録作成"):
+        if st.session_state.messages:
+            # --- ここからデバッグ用表示 ---
+            st.write("### 📤 送信データ(デバッグ用)")
+            st.json(st.session_state.messages) # リスト形式を綺麗に表示します
+            # --- ここまで ---
+
+            with st.spinner("整理してるよ..."):
+                try:
+                    payload = {"messages": st.session_state.messages}
+                    res = requests.post(BACKEND_URL, json=payload, timeout=120)
+                    if res.status_code == 200:
+                        st.balloons()
+                        st.markdown("### 📋 整理したメモ")
+                        st.info(res.json().get("minutes"))
+                        st.download_button("保存する", res.json().get("minutes"), "memo.txt")
+                except:
+                    st.error("バックエンドと通信できなかったよ。")
+        else:
+            st.warning("まだ何も話してないよ。")
+            
+    if st.button("🔄会話リセット"):
+        st.session_state.messages = []
+        st.session_state.response_index = 0
+        st.rerun()
