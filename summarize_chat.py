@@ -8,6 +8,9 @@ HF_TOKEN = "（自分のキー）"
 # InferenceClientを初期化
 client = InferenceClient(token=HF_TOKEN)
 
+# プロンプトファイルのパス（スクリプトと同じ階層にある場合）
+PROMPT_FILE_PATH = "prompt/summarize.txt"
+
 def format_conversation(messages):
     """
     JSON形式のリスト（role, content, timeを含む）会話履歴リストを単一のテキストに整形する
@@ -19,6 +22,17 @@ def format_conversation(messages):
         timestamp = msg.get("time", "時間不明")
         formatted_text += f"[{timestamp}] {role}: {content}\n"
     return formatted_text
+
+def load_prompt_template(file_path):
+    """
+    外部ファイルからプロンプトのテンプレートを読み込む
+    """
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"プロンプトファイルが見つかりません: {file_path}")
+    
+    # encoding='utf-8'を指定して日本語文字化けを防ぐ
+    with open(file_path, "r", encoding="utf-8") as f:
+        return f.read()
 
 def summarize_messages(messages):
     if not messages:
