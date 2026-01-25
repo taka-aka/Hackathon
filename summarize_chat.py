@@ -1,20 +1,24 @@
 from huggingface_hub import InferenceClient
 import json
+import os
+from dotenv import load_dotenv
 from pathlib import Path
 
-# 1. 準備したトークン
-HF_TOKEN = "（自分のキー）"
+load_dotenv()
+HF_TOKEN = os.getenv("HF_TOKEN")
+if HF_TOKEN is None:
+    raise RuntimeError("環境変数 HF_TOKEN が設定されていません")
 
 # InferenceClientを初期化
 client = InferenceClient(token=HF_TOKEN)
 
-# プロンプトファイルのパス（スクリプトと同じ階層にある場合）
-PROMPT_FILE_PATH = "prompt/summarize.txt"
+BASE_DIR = Path(__file__).parent
+PROMPT_FILE_PATH = BASE_DIR / "prompts" / "summarize.txt"
+print("cwd:", Path.cwd())
+print("file:", Path(__file__).parent)
 
 def format_conversation(messages):
-    """
-    JSON形式のリスト（role, content, timeを含む）会話履歴リストを単一のテキストに整形する
-    """
+    # json形式を [10:30] user: こんにちは のように変換
     formatted_text = ""
     for msg in messages:
         role = msg.get("role", "unknown")
@@ -23,16 +27,16 @@ def format_conversation(messages):
         formatted_text += f"[{timestamp}] {role}: {content}\n"
     return formatted_text
 
+
 def load_prompt_template(file_path):
-    """
-    外部ファイルからプロンプトのテンプレートを読み込む
-    """
+    # 外部ファイルからプロンプトのテンプレートを読み込む
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"プロンプトファイルが見つかりません: {file_path}")
     
     # encoding='utf-8'を指定して日本語文字化けを防ぐ
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()
+
 
 def summarize_messages(messages):
     if not messages:
@@ -49,20 +53,15 @@ def summarize_messages(messages):
 
     try:
         print("要約を実行しています...")
-        
-        # プロンプトを作成（日本語で要約を依頼）
-        prompt = f"""以下の会話履歴（期間: {start_t} 〜 {end_t}）を、いつ、誰が、どのような流れで話したか明確に要約してください。
-特に時間の経過（開始から終了までの流れ）を重視してください。
-要約の例：
-「21時ちょうど、アイスの話から始まり、その後すぐに伊能先生の結婚や遊園地の話題について短時間で会話した。」
-
-会話:
-{input_text}
-
-要約:"""
-        
-        # chat_completionを使用（日本語対応のLLM）
+    
+        prompt_template = load_prompt_template(PROMPT_FILE_PATH)
+        prompt = prompt_template.format(
+            start_t = start_t,
+            end_t = end_t,
+            input_text = input_text
+        )
         messages_for_api = [
+            {"role": "system", "content": "あなたは優秀な議事録AIです"},
             {"role": "user", "content": prompt}
         ]
         
@@ -99,20 +98,25 @@ def summarize_messages(messages):
             print(f"フォールバックも失敗: {e2}")
             return None
 
-# --- JSONファイルから読み込むメイン処理 ---
-if __name__ == "__main__":
-    CHAT_FILE = Path("chat_log.json")
+
+# 単体テスト用、chat_log.json から即要約したい
+# def main():
+#     CHAT_FILE = Path("chat_log.json")
     
-    if CHAT_FILE.exists():
-        with open(CHAT_FILE, "r", encoding="utf-8") as f:
-            # JSONファイルを読み込んでリストに変換
-            messages_from_json = json.load(f)
+#     if not CHAT_FILE.exists():
+#         print(f"エラー: {CHAT_FILE} が見つかりません。")
+#         return
+    
+#     with open(CHAT_FILE, "r", encoding="utf-8") as f:
+#         messages_from_json = json.load(f)
         
-        # 要約を実行
-        summary = summarize_messages(messages_from_json)
+#     # 要約を実行
+#     summary = summarize_messages(messages_from_json)
         
-        if summary:
-            print("\n【JSONからの要約結果】")
-            print(summary)
-    else:
-        print(f"エラー: {CHAT_FILE} が見つかりません。")
+#     if summary:
+#         print("\n【JSONからの要約結果】")
+#         print(summary)
+
+
+# if __name__ == "__main__":
+#     main()

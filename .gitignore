@@ -9,3 +9,6 @@ venv/
 # OS系
 .DS_Store
 Thumbs.db
+
+#トークン
+.env
