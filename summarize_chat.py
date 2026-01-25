@@ -1,7 +1,7 @@
 from huggingface_hub import InferenceClient
 
 # 1. 準備したトークン
-HF_TOKEN = "（ここは各々でHuggingFaceのトークンを入力してください）"
+HF_TOKEN = ""
 
 # InferenceClientを初期化
 client = InferenceClient(token=HF_TOKEN)
