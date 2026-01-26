@@ -97,6 +97,28 @@ def summarize_messages(messages):
         except Exception as e2:
             print(f"フォールバックも失敗: {e2}")
             return None
+        
+         
+# アシスタントにLLMを追加
+def chat_with_llm(messages):
+    # プロンプトせってい
+    api_messages = [
+        {"role": "system", "content": "あなたは親しみやすい友達です。タメ口で、短く自然な日本語で返答してください。"}
+    ]
+
+    for msg in messages[-10:]:
+        api_messages.append({"role": msg["role"], "content": msg["content"]})
+
+    try:
+        result = client.chat_completion(
+            messages=api_messages,
+            model="Qwen/Qwen2.5-72B-Instruct",
+            max_tokens=150
+        )
+        return result.choices[0].message.content
+    except Exception as e:
+        print(f"Chat Error: {e}")
+        return "ごめん、ちょっとネットの調子悪いかも！"
 
 
 # 単体テスト用、chat_log.json から即要約したい

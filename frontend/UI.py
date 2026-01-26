@@ -4,12 +4,18 @@ import time
 import random
 from datetime import datetime
 import time
+import sys
+import os
+# backendフォルダを読み込めるようにパスを追加
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from backend.summarize_chat import chat_with_llm # backendからインポート
 
 # st.sesson_state.messagesを保存、保存ファイルの読み込み用
 from save_load import save_chat, load_chat, reset_chat
 
 # --- 設定 ---
 BACKEND_URL = "http://127.0.0.1:8000/generate_minutes"
+CHAT_API_URL = "http://127.0.0.1:8000/chat"
 
 st.set_page_config(page_title="トーク", page_icon="💬")
 
@@ -95,13 +101,25 @@ if prompt := st.chat_input("メッセージを入力"):
         # st.markdown(prompt)
         render_message(prompt, current_time)
 
-    # 固定の雑談返答
-    if st.session_state.response_index < len(FIXED_BUDDY_RESPONSES):
-        response_text = FIXED_BUDDY_RESPONSES[st.session_state.response_index]
-        st.session_state.response_index += 1
-    else:
-        # リストを使い切ったら適当な相槌
-        response_text = "うんうん、わかるよ。"
+    # # 固定の雑談返答
+    # if st.session_state.response_index < len(FIXED_BUDDY_RESPONSES):
+    #     response_text = FIXED_BUDDY_RESPONSES[st.session_state.response_index]
+    #     st.session_state.response_index += 1
+    # else:
+    #     # リストを使い切ったら適当な相槌
+    #     response_text = "うんうん、わかるよ。"
+    
+    # --- 修正ポイント：固定返答ではなくLLMを呼び出す ---
+    with st.spinner(""):
+        try:
+            payload = {"messages": st.session_state.messages}
+            res = requests.post(CHAT_API_URL, json=payload, timeout=30)
+            if res.status_code == 200:
+                response_text = res.json().get("response")
+            else:
+                response_text = "通信エラーになっちゃった。"
+        except:
+            response_text = "バックエンドが起動してないみたい。"
 
     final_text, current_time = buddy_typing(response_text)
     st.session_state.messages.append({"role": "assistant", "content": final_text, "time": current_time,})
