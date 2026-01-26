@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List
 import uvicorn
 # summarize_chat.pyから要約ロジックをインポート
-from summarize_chat import summarize_messages
+from backend.summarize_chat import summarize_messages
 
 app = FastAPI()
 

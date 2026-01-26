@@ -13,7 +13,7 @@ if HF_TOKEN is None:
 client = InferenceClient(token=HF_TOKEN)
 
 BASE_DIR = Path(__file__).parent
-PROMPT_FILE_PATH = BASE_DIR / "prompts" / "summarize.txt"
+PROMPT_FILE_PATH = BASE_DIR.parent / "prompts" / "summarize.txt"
 print("cwd:", Path.cwd())
 print("file:", Path(__file__).parent)
 
