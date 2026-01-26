@@ -3,7 +3,6 @@ from pydantic import BaseModel
 from typing import List
 import uvicorn
 # summarize_chat.pyから要約ロジックをインポート
-from backend.summarize_chat import summarize_messages
 from backend.summarize_chat import summarize_messages, chat_with_llm
 # --- 既存の /generate_minutes はそのまま ---
 
