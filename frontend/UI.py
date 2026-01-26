@@ -43,14 +43,14 @@ if "response_index" not in st.session_state:
 
 # --- 【完全雑談】固定の返答リスト ---
 # 誘導する言葉を一切排除し、日常の会話っぽくしています
-FIXED_BUDDY_RESPONSES = [
-    "おー、お疲れ！今日なんかあった？",
-    "マジか、それは予想外だわw",
-    "あーね。それめっちゃわかる気がする。",
-    "へぇ〜、それでその後どうなったん？",
-    "なるほど。まあ、なんとかなりそうじゃん！",
-    "いい感じだね。また後で詳しく教えてよ！"
-]
+# FIXED_BUDDY_RESPONSES = [
+#     "おー、お疲れ！今日なんかあった？",
+#     "マジか、それは予想外だわw",
+#     "あーね。それめっちゃわかる気がする。",
+#     "へぇ〜、それでその後どうなったん？",
+#     "なるほど。まあ、なんとかなりそうじゃん！",
+#     "いい感じだね。また後で詳しく教えてよ！"
+# ]
 
 def  render_message(content: str, time_str: str):
     st.markdown(
@@ -125,7 +125,7 @@ if prompt := st.chat_input("メッセージを入力"):
     st.session_state.messages.append({"role": "assistant", "content": final_text, "time": current_time,})
 
 # --- サイドバー ---
-#議事録作成ボタンと会話リセットぼたん
+#議事録作成ボタンと会話リセットボタン
 with st.sidebar:
     st.write("---")
     st.write("メニュー")
