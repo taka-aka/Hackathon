@@ -156,7 +156,4 @@ with st.sidebar:
     if st.button("🔄会話リセット"):
         # 過去の会話漏れセット
         reset_chat()
-
-        st.session_state.messages = []
-        st.session_state.response_index = 0
         st.rerun()
