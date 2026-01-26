@@ -101,7 +101,7 @@ def summarize_messages(messages):
          
 # アシスタントにLLMを追加
 def chat_with_llm(messages):
-    # プロンプトせってい
+    # プロンプト設定
     api_messages = [
         {"role": "system", "content": "あなたは親しみやすい友達です。タメ口で、短く自然な日本語で返答してください。"}
     ]
