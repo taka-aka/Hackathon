@@ -12,3 +12,5 @@ Thumbs.db
 
 #トークン
 .env
+token.json
+credentials.json

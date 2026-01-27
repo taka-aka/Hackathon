@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
-import uvicorn
+import uvicorn, json, re
 # summarize_chat.pyから要約ロジックをインポート
 from backend.summarize_chat import summarize_messages
 
@@ -26,9 +26,20 @@ async def generate_minutes(data: ChatData):
         summary = summarize_messages(messages_dict)
         
         if summary is None:
-            raise HTTPException(status_code=500, detail="LLMによる要約に失敗しました。")
-            
-        return {"minutes": summary}
+            raise HTTPException(status_code=500, detail="LLMによる要約に失敗しました。")  
+        # return {"minutes": summary}
+        
+        # print(summary)
+        clean_summary = re.sub(r"```json|```", "", summary).strip()
+        try:
+            summary_json = json.loads(clean_summary)
+        except json.JSONDecodeError:
+            summary_json = {
+                "minutes": clean_summary,
+                "events": []
+            }
+        return summary_json
+
     except Exception as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

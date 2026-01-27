@@ -98,3 +98,25 @@ def summarize_messages(messages):
         except Exception as e2:
             print(f"フォールバックも失敗: {e2}")
             return None
+
+# 単体テスト用、chat_log.json から即要約したい
+def main():
+    CHAT_FILE = Path("chat_log.json")
+    
+    if not CHAT_FILE.exists():
+        print(f"エラー: {CHAT_FILE} が見つかりません。")
+        return
+    
+    with open(CHAT_FILE, "r", encoding="utf-8") as f:
+        messages_from_json = json.load(f)
+        
+    # 要約を実行
+    summary = summarize_messages(messages_from_json)
+        
+    if summary:
+        print("\n【JSONからの要約結果】")
+        print(summary)
+
+
+if __name__ == "__main__":
+    main()
