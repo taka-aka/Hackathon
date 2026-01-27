@@ -4,12 +4,8 @@ import time
 import random
 from datetime import datetime
 import time
-import sys
-import os
 # backendフォルダを読み込めるようにパスを追加
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from backend.summarize_chat import chat_with_llm # backendからインポート
-
 # st.sesson_state.messagesを保存、保存ファイルの読み込み用
 from save_load import save_chat, load_chat, reset_chat
 
