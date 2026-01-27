@@ -12,7 +12,6 @@ def load_chat():
     if not CHAT_FILE.exists():
         return []
     with open(CHAT_FILE, "r", encoding="utf-8") as f:
-        print('ロード完了')
         return json.load(f)
 
 def reset_chat():

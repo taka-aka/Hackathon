@@ -3,10 +3,9 @@ import requests
 import time
 import random
 from datetime import datetime
-import time
 
-# st.sesson_state.messagesを保存、保存ファイルの読み込み用
 from save_load import save_chat, load_chat, reset_chat
+from frontend.add_reminder_to_google_calender import add_reminder
 
 # --- 設定 ---
 BACKEND_URL = "http://127.0.0.1:8000/generate_minutes"
@@ -29,11 +28,17 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 if "messages" not in st.session_state:
-    # 過去の会話履歴を読み込む
-        st.session_state.messages = load_chat()
+    st.session_state.messages = load_chat()
     # st.session_state.messages = []
+if "minutes" not in st.session_state:
+    st.session_state.minutes = ""
+if "events" not in st.session_state:
+    st.session_state.events = []
 if "response_index" not in st.session_state:
     st.session_state.response_index = 0
+if "show_minutes" not in st.session_state:
+    st.session_state.show_minutes = False
+
 
 # --- 【完全雑談】固定の返答リスト ---
 # 誘導する言葉を一切排除し、日常の会話っぽくしています
@@ -69,11 +74,34 @@ def buddy_typing(text):
             # 友達がスマホを打つようなランダムな速さ
             time.sleep(random.uniform(0.02, 0.06))
         placeholder.markdown(full_response)
-    # retrun full_response
-
         now = datetime.now()
         current_time = now.strftime("%Y-%m-%d %H:%M:%S")
     return full_response, current_time
+
+
+def add_google_calender():
+    events = st.session_state.events
+    if events:
+        st.success(f"予定が {len(events)}件 あったよ")
+        eventlist = {
+            f"{e['date']} {e['start_time']} {e['end_time']}: {e['title']}" : e
+            for e in events
+        }
+        selected_events =st.pills(
+            label="追加したい予定を選択してね",
+            options=list(eventlist.keys()),
+            selection_mode="multi"
+        )
+        if st.button("📅 予定を反映"):
+            if not selected_events:
+                st.warning("予定を選んでね！")
+            else:
+                add_reminder(events)
+                st.success("Googleカレンダーに追加したよ！🎉")
+
+
+
+
 
 # 履歴表示
 for message in st.session_state.messages:
@@ -112,7 +140,8 @@ with st.sidebar:
     st.write("---")
     st.write("メニュー")
     if st.button("✨ 議事録作成"):
-        if st.session_state.messages:
+        st.session_state.show_minutes = False
+        if st.session_state.messages and not st.session_state.show_minutes: 
             # 会話データを送信  
             save_chat(st.session_state.messages)
 
@@ -127,14 +156,22 @@ with st.sidebar:
                     res = requests.post(BACKEND_URL, json=payload, timeout=120)
                     if res.status_code == 200:
                         st.balloons()
-                        st.markdown("### 📋 整理したメモ")
-                        st.info(res.json().get("minutes"))
-                        st.download_button("保存する", res.json().get("minutes"), "memo.txt")
+                        st.session_state.minutes = res.json().get("minutes")
+                        st.session_state.show_minutes = True
+                        st.session_state.events = res.json().get("events", [])
                 except:
                     st.error("バックエンドと通信できなかったよ。")
         else:
             st.warning("まだ何も話してないよ。")
-            
+
+    if st.session_state.show_minutes:
+        st.markdown("### 📋 整理したメモ")
+        st.info(st.session_state.minutes)
+        st.download_button("メモを保存", st.session_state.minutes, "memo.txt")
+
+        add_google_calender()        
+
+    
     if st.button("🔄会話リセット"):
         # 過去の会話漏れセット
         reset_chat()
