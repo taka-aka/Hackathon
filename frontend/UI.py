@@ -121,6 +121,7 @@ if prompt := st.chat_input("メッセージを入力"):
     now = datetime.now()
     current_time = now.strftime("%Y-%m-%d %H:%M:%S")
     st.session_state.messages.append({"role": "user", "content": prompt, "time": current_time,})
+    save_chat(st.session_state.messages) #会話を保存
     with st.chat_message("user", avatar="👤"):
         # st.markdown(prompt)
         render_message(prompt, current_time)
@@ -147,6 +148,7 @@ if prompt := st.chat_input("メッセージを入力"):
 
     final_text, current_time = buddy_typing(response_text)
     st.session_state.messages.append({"role": "assistant", "content": final_text, "time": current_time,})
+    save_chat(st.session_state.messages) #会話を保存
 
 # --- サイドバー ---
 #議事録作成ボタンと会話リセットボタン
