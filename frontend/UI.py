@@ -3,12 +3,16 @@ import requests
 import time
 import random
 from datetime import datetime
-
+import time
+# backendフォルダを読み込めるようにパスを追加
+from backend.summarize_chat import chat_with_llm # backendからインポート
+# st.sesson_state.messagesを保存、保存ファイルの読み込み用
 from save_load import save_chat, load_chat, reset_chat
 from backend.add_reminder_to_google_calender import add_reminder
 
 # --- 設定 ---
 BACKEND_URL = "http://127.0.0.1:8000/generate_minutes"
+CHAT_API_URL = "http://127.0.0.1:8000/chat"
 
 st.set_page_config(page_title="トーク", page_icon="💬")
 
@@ -42,14 +46,14 @@ if "show_minutes" not in st.session_state:
 
 # --- 【完全雑談】固定の返答リスト ---
 # 誘導する言葉を一切排除し、日常の会話っぽくしています
-FIXED_BUDDY_RESPONSES = [
-    "おー、お疲れ！今日なんかあった？",
-    "マジか、それは予想外だわw",
-    "あーね。それめっちゃわかる気がする。",
-    "へぇ〜、それでその後どうなったん？",
-    "なるほど。まあ、なんとかなりそうじゃん！",
-    "いい感じだね。また後で詳しく教えてよ！"
-]
+# FIXED_BUDDY_RESPONSES = [
+#     "おー、お疲れ！今日なんかあった？",
+#     "マジか、それは予想外だわw",
+#     "あーね。それめっちゃわかる気がする。",
+#     "へぇ〜、それでその後どうなったん？",
+#     "なるほど。まあ、なんとかなりそうじゃん！",
+#     "いい感じだね。また後で詳しく教えてよ！"
+# ]
 
 def  render_message(content: str, time_str: str):
     st.markdown(
@@ -117,23 +121,37 @@ if prompt := st.chat_input("メッセージを入力"):
     now = datetime.now()
     current_time = now.strftime("%Y-%m-%d %H:%M:%S")
     st.session_state.messages.append({"role": "user", "content": prompt, "time": current_time,})
+    save_chat(st.session_state.messages) #会話を保存
     with st.chat_message("user", avatar="👤"):
         # st.markdown(prompt)
         render_message(prompt, current_time)
 
-    # 固定の雑談返答
-    if st.session_state.response_index < len(FIXED_BUDDY_RESPONSES):
-        response_text = FIXED_BUDDY_RESPONSES[st.session_state.response_index]
-        st.session_state.response_index += 1
-    else:
-        # リストを使い切ったら適当な相槌
-        response_text = "うんうん、わかるよ。"
+    # # 固定の雑談返答
+    # if st.session_state.response_index < len(FIXED_BUDDY_RESPONSES):
+    #     response_text = FIXED_BUDDY_RESPONSES[st.session_state.response_index]
+    #     st.session_state.response_index += 1
+    # else:
+    #     # リストを使い切ったら適当な相槌
+    #     response_text = "うんうん、わかるよ。"
+    
+    # --- 修正ポイント：固定返答ではなくLLMを呼び出す ---
+    with st.spinner(""):
+        try:
+            payload = {"messages": st.session_state.messages}
+            res = requests.post(CHAT_API_URL, json=payload, timeout=30)
+            if res.status_code == 200:
+                response_text = res.json().get("response")
+            else:
+                response_text = "通信エラーになっちゃった。"
+        except:
+            response_text = "バックエンドが起動してないみたい。"
 
     final_text, current_time = buddy_typing(response_text)
     st.session_state.messages.append({"role": "assistant", "content": final_text, "time": current_time,})
+    save_chat(st.session_state.messages) #会話を保存
 
 # --- サイドバー ---
-#議事録作成ボタンと会話リセットぼたん
+#議事録作成ボタンと会話リセットボタン
 with st.sidebar:
     st.write("---")
     st.write("メニュー")
@@ -173,7 +191,5 @@ with st.sidebar:
     if st.button("🔄会話リセット"):
         # 過去の会話漏れセット
         reset_chat()
-
         st.session_state.messages = []
-        st.session_state.response_index = 0
         st.rerun()

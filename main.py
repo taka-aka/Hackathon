@@ -3,7 +3,8 @@ from pydantic import BaseModel
 from typing import List
 import uvicorn, json, re
 # summarize_chat.pyから要約ロジックをインポート
-from backend.summarize_chat import summarize_messages
+from backend.summarize_chat import summarize_messages, chat_with_llm
+# --- 既存の /generate_minutes はそのまま ---
 
 app = FastAPI()
 
@@ -42,6 +43,17 @@ async def generate_minutes(data: ChatData):
 
     except Exception as e:
         print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# チャット用の新しいエンドポイント
+@app.post("/chat")
+async def chat_endpoint(data: ChatData):
+    try:
+        messages_dict = [m.model_dump() for m in data.messages]
+        # チャット応答を生成
+        response = chat_with_llm(messages_dict)
+        return {"response": response}
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

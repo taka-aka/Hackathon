@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hackathon-app"
+version = "0.1.0"
+dependencies = [
+    "streamlit",
+    "requests",
+    # 他に必要なライブラリがあればここに書けます
+]
+
+[tool.setuptools]
+# 読み込みたいパッケージ（フォルダ名）を明示的に指定します
+packages = ["backend", "frontend", "prompts"]
