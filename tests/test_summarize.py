@@ -98,47 +98,25 @@ def summarize_messages(messages):
         except Exception as e2:
             print(f"フォールバックも失敗: {e2}")
             return None
-        
-# アシスタントにLLMを追加
-def chat_with_llm(messages):
-    # プロンプト設定
-    api_messages = [
-        {"role": "system", "content": "あなたは親しみやすい友達です。タメ口で、短く自然な日本語で返答してください。"}
-    ]
-
-    for msg in messages[-10:]:
-        api_messages.append({"role": msg["role"], "content": msg["content"]})
-
-    try:
-        result = client.chat_completion(
-            messages=api_messages,
-            model="Qwen/Qwen2.5-72B-Instruct",
-            max_tokens=150
-        )
-        return result.choices[0].message.content
-    except Exception as e:
-        print(f"Chat Error: {e}")
-        return "ごめん、ちょっとネットの調子悪いかも！"
-
 
 # 単体テスト用、chat_log.json から即要約したい
-# def main():
-#     CHAT_FILE = Path("chat_log.json")
+def main():
+    CHAT_FILE = Path("chat_log.json")
     
-#     if not CHAT_FILE.exists():
-#         print(f"エラー: {CHAT_FILE} が見つかりません。")
-#         return
+    if not CHAT_FILE.exists():
+        print(f"エラー: {CHAT_FILE} が見つかりません。")
+        return
     
-#     with open(CHAT_FILE, "r", encoding="utf-8") as f:
-#         messages_from_json = json.load(f)
+    with open(CHAT_FILE, "r", encoding="utf-8") as f:
+        messages_from_json = json.load(f)
         
-#     # 要約を実行
-#     summary = summarize_messages(messages_from_json)
+    # 要約を実行
+    summary = summarize_messages(messages_from_json)
         
-#     if summary:
-#         print("\n【JSONからの要約結果】")
-#         print(summary)
+    if summary:
+        print("\n【JSONからの要約結果】")
+        print(summary)
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()
