@@ -3,9 +3,7 @@ import requests
 import time
 import random
 from datetime import datetime
-import time
-# backendフォルダを読み込めるようにパスを追加
-from hackathon_app.backend.summarize.summarize_chat import chat_with_llm # backendからインポート
+
 # st.sesson_state.messagesを保存、保存ファイルの読み込み用
 from hackathon_app.frontend.save_load import save_chat, load_chat, reset_chat
 

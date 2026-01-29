@@ -14,6 +14,7 @@ Thumbs.db
 .env
 token.json
 credentials.json
+chat_log.json
 
 #pip install -eを実行したときに自動で作られるファイル
 *.egg-info/
