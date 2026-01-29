@@ -9,7 +9,7 @@ os.environ["PYTHONIOENCODING"] = "UTF-8"
 
 def main():
     # 起動コマンドの設定
-    backend_cmd = [sys.executable, "-m", "uvicorn", "hackathon_app.main:app", "--reload"]
+    backend_cmd = [sys.executable, "-m", "uvicorn", "hackathon_app.backend.main:app", "--reload"]
     frontend_cmd = [sys.executable, "-m", "streamlit", "run", "src/hackathon_app/frontend/UI.py"]
 
     print("🚀 開発環境を起動中...")

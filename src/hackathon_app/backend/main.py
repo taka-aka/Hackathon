@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import List
 import uvicorn, json, re
 # summarize_chat.pyから要約ロジックをインポート
-from hackathon_app.backend.summarize.summarize_chat import summarize_messages, chat_with_llm
+from src.hackathon_app.backend.summarize.summarize_chat import summarize_messages, chat_with_llm
 # --- 既存の /generate_minutes はそのまま ---
 
 app = FastAPI()
