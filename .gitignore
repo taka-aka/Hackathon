@@ -17,3 +17,4 @@ credentials.json
 
 #pip install -eを実行したときに自動で作られるファイル
 *.egg-info/
+build/

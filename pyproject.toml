@@ -8,9 +8,15 @@ version = "0.1.0"
 dependencies = [
     "streamlit",
     "requests",
-    # 他に必要なライブラリがあればここに書けます
+    "huggingface_hub",
+    "python-dotenv",
 ]
 
 [tool.setuptools]
-# 読み込みたいパッケージ（フォルダ名）を明示的に指定します
-packages = ["backend", "frontend", "prompts"]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+hackathon_app = ["prompts/*.txt"]
