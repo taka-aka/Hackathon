@@ -5,10 +5,10 @@ import random
 from datetime import datetime
 import time
 # backendフォルダを読み込めるようにパスを追加
-from backend.summarize_chat import chat_with_llm # backendからインポート
+from hackathon_app.backend.summarize_chat import chat_with_llm # backendからインポート
 # st.sesson_state.messagesを保存、保存ファイルの読み込み用
-from save_load import save_chat, load_chat, reset_chat
-from backend.add_reminder_to_google_calender import add_reminder
+from hackathon_app.frontend.save_load import save_chat, load_chat, reset_chat
+from hackathon_app.backend.add_reminder_to_google_calender import add_reminder
 
 # --- 設定 ---
 BACKEND_URL = "http://127.0.0.1:8000/generate_minutes"
