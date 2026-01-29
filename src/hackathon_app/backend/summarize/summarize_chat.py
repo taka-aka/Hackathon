@@ -12,9 +12,9 @@ if HF_TOKEN is None:
 # InferenceClientを初期化
 client = InferenceClient(token=HF_TOKEN)
 
-BASE_DIR = Path(__file__).parent
-# PROMPT_FILE_PATH = BASE_DIR.parent / "prompts" / "summarize.txt"
-PROMPT_FILE_PATH = BASE_DIR.parent / "prompts" / "minutes_events.txt"
+# BASE_DIR = Path(__file__).parent これだとbackendディレクトリを見てします
+# PROMPT_FILE_PATH = BASE_DIR.parent / "prompts" / "minutes_events.txt"
+PROMPT_FILE_PATH = "src/hackathon_app/prompts/minutes_events.txt"
 print("cwd:", Path.cwd())
 print("file:", Path(__file__).parent)
 
