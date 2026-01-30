@@ -6,104 +6,34 @@ from datetime import datetime
 
 # st.sesson_state.messagesを保存、保存ファイルの読み込み用
 from hackathon_app.frontend.save_load import save_chat, load_chat, reset_chat
+from hackathon_app.frontend.ui.ui_settings import MINUTES_API_URL, CHAT_API_URL, PAGE_CONFIG, CSS
+from hackathon_app.frontend.ui.ui_rendering_typing import render_message, buddy_typing
+from hackathon_app.frontend.ui.ui_calendar import select_reminder
+from hackathon_app.frontend.ui.ui_rooms import init_rooms, get_current_room, create_new_room, switch_room, rename_room, delete_room, reset_current_room
 
-# --- 設定 ---
-BACKEND_URL = "http://127.0.0.1:8000"
-CHAT_API_URL = "http://127.0.0.1:8000/chat"
-
-st.set_page_config(page_title="トーク", page_icon="💬")
-
-# --- CSS ---
-st.markdown("""
-    <style>
-    .stApp { background-color: #7494C0; }
-    div[data-testid="stChatMessage"] { background-color: transparent !important; }
-    div[data-testid="stChatMessage"]:has(div[aria-label="Chat message from user"]) { flex-direction: row-reverse; text-align: right; }
-    div[data-testid="stChatMessage"]:has(div[aria-label="Chat message from user"]) div[data-testid="stMarkdownContainer"] {
-        background-color: #8DE055; color: #000; padding: 10px 15px; border-radius: 15px 15px 2px 15px; display: inline-block; margin-right: 10px;
-    }
-    div[data-testid="stChatMessage"]:has(div[aria-label="Chat message from assistant"]) div[data-testid="stMarkdownContainer"] {
-        background-color: #FFFFFF; color: #000; padding: 10px 15px; border-radius: 15px 15px 15px 2px; display: inline-block; margin-left: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+st.set_page_config(**PAGE_CONFIG)
+st.markdown(CSS, unsafe_allow_html=True)
 
 if "messages" not in st.session_state:
     st.session_state.messages = load_chat()
-    # st.session_state.messages = []
 if "minutes" not in st.session_state:
     st.session_state.minutes = ""
 if "events" not in st.session_state:
     st.session_state.events = []
-if "response_index" not in st.session_state:
-    st.session_state.response_index = 0
 if "show_minutes" not in st.session_state:
     st.session_state.show_minutes = False
 
-# --- 複数ルーム管理用の初期化 ---
-if "rooms" not in st.session_state:
-    st.session_state.rooms = {
-        "トークルーム 1": {"messages": load_chat(), "minutes": "", "events": [], "show_minutes": False}
-    }
-if "current_room" not in st.session_state:
-    st.session_state.current_room = "トークルーム 1"
 
-# 現在のルームのデータを参照しやすくする
-room = st.session_state.rooms[st.session_state.current_room]
-
-# --- 【完全雑談】固定の返答リスト ---
-# 誘導する言葉を一切排除し、日常の会話っぽくしています
-# FIXED_BUDDY_RESPONSES = [
-#     "おー、お疲れ！今日なんかあった？",
-#     "マジか、それは予想外だわw",
-#     "あーね。それめっちゃわかる気がする。",
-#     "へぇ〜、それでその後どうなったん？",
-#     "なるほど。まあ、なんとかなりそうじゃん！",
-#     "いい感じだね。また後で詳しく教えてよ！"
-# ]
-
-def  render_message(content: str, time_str: str):
-    st.markdown(
-        f"""
-        <div style="font-size: 0.75em; color: #666; margin-bottom: 4px;">
-            {time_str}
-        </div>
-        <div>
-            {content}
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-def buddy_typing(text):
-    with st.chat_message("assistant", avatar="😎"):
-        placeholder = st.empty()
-        full_response = ""
-        for char in text:
-            full_response += char
-            placeholder.markdown(full_response + "▌")
-            # 友達がスマホを打つようなランダムな速さ
-            time.sleep(random.uniform(0.02, 0.06))
-        placeholder.markdown(full_response)
-        now = datetime.now()
-        current_time = now.strftime("%Y-%m-%d %H:%M:%S")
-    return full_response, current_time
-
-
-# 履歴表示
-for message in st.session_state.messages:
-
+init_rooms()
+room = get_current_room()
 
 # --- メイン画面: 履歴表示 (現在のルームのみ) ---
 for message in room["messages"]:
-
     avatar = "👤" if message["role"] == "user" else "😎"
 
-    # 時間も表示
     time_str = message.get("time", "")
 
     with st.chat_message(message["role"], avatar=avatar):
-        # st.markdown({message["content"]})
         render_message(message["content"], time_str)
         
 # --- チャット入力 ---
@@ -113,18 +43,8 @@ if prompt := st.chat_input("メッセージを入力"):
     room["messages"].append({"role": "user", "content": prompt, "time": current_time})
     save_chat(room["messages"]) #会話を保存
     with st.chat_message("user", avatar="👤"):
-        # st.markdown(prompt)
         render_message(prompt, current_time)
 
-    # # 固定の雑談返答
-    # if st.session_state.response_index < len(FIXED_BUDDY_RESPONSES):
-    #     response_text = FIXED_BUDDY_RESPONSES[st.session_state.response_index]
-    #     st.session_state.response_index += 1
-    # else:
-    #     # リストを使い切ったら適当な相槌
-    #     response_text = "うんうん、わかるよ。"
-    
-    # --- 修正ポイント：固定返答ではなくLLMを呼び出す ---
     with st.spinner(""):
         try:
             payload = {"messages": room["messages"]}
@@ -136,32 +56,25 @@ if prompt := st.chat_input("メッセージを入力"):
         except:
             response_text = "バックエンドが起動してないみたい。"
 
-    final_text, current_time = buddy_typing(response_text)
+    final_text = buddy_typing(response_text)
+    now = datetime.now()
+    current_time = now.strftime("%Y-%m-%d %H:%M:%S")
     room["messages"].append({"role": "assistant", "content": final_text, "time": current_time})
-    save_chat(room["messages"]) #会話を保存
+    save_chat(room["messages"])
 
 # --- サイドバー ---
-#議事録作成ボタンと会話リセットボタン
 with st.sidebar:
     st.write("---")
     st.write("メニュー")
     if st.button("✨ 議事録作成"):
         if room["messages"]: 
             st.session_state.show_minutes = False # リセット 
-            # 会話データを送信  
             save_chat(st.session_state.messages)
-
-            # # --- ここからデバッグ用表示 ---
-            # st.write("### 📤 送信データ(デバッグ用)")
-            # st.json(st.session_state.messages) # リスト形式を綺麗に表示します
-            # # --- ここまで ---
 
             with st.spinner("整理してるよ..."):
                 try:
-
                     payload = {"messages": room["messages"]}
-                    res = requests.post(BACKEND_URL, json=payload, timeout=120)
-                    
+                    res = requests.post(MINUTES_API_URL, json=payload, timeout=120)
                     if res.status_code == 200:
                         st.balloons()
                         st.session_state.minutes = res.json().get("minutes")
@@ -176,28 +89,8 @@ with st.sidebar:
         st.markdown("### 📋 整理したメモ")
         st.info(st.session_state.minutes)
         st.download_button("メモを保存", st.session_state.minutes, "memo.txt")
+        select_reminder(st.session_state.events)   
 
-        events = st.session_state.events
-        if events:
-            st.success(f"予定が {len(events)}件 あったよ")
-            eventlist = {
-                f"{e['date']} {e['start_time']} {e['end_time']}: {e['title']}" : e
-                for e in events
-            }
-            selected_event_keys =st.pills(
-                label="追加したい予定を選択してね",
-                options=list(eventlist.keys()),
-                selection_mode="multi"
-            )
-
-        if st.button("📅 予定を反映"):
-            if not selected_event_keys:
-                st.warning("予定を選んでね！")
-            else:
-                payload = {"events": st.session_state.events}
-                res = requests.post(BACKEND_URL+"/add_calendar", json=payload)
-                if res.status_code == 200:
-                    st.success("Googleカレンダーに追加したよ！🎉")  
     
     if st.button("🔄会話リセット"):
         room["messages"] = []
@@ -209,31 +102,16 @@ with st.sidebar:
     st.write("---")
     st.write("チャット")
     if st.button("➕ 新しいチャットを作成", use_container_width=True):
-        # 重複しない名前を作る（現在の秒数などを利用）
-        timestamp = datetime.now().strftime("%H%M%S")
-        new_name = f"トークルーム {timestamp}"
-        st.session_state.rooms[new_name] = {
-            "messages": [], 
-            "minutes": "", 
-            "events": [], 
-            "show_minutes": False
-        }
-        st.session_state.current_room = new_name
-        st.rerun()
-
+        create_new_room()
     # ルーム一覧の描画
-    room_names = list(st.session_state.rooms.keys())
-    
-    for idx, r_name in enumerate(room_names):
+    for r_name in st.session_state.rooms.keys():
         col1, col2 = st.columns([0.85, 0.15])
         with col1:
             is_active = (st.session_state.current_room == r_name)
             if st.button(r_name, key=f"select_{r_name}", use_container_width=True, type="primary" if is_active else "secondary"):
-                st.session_state.current_room = r_name
-                st.rerun()
+                switch_room(r_name)
         with col2:
             with st.popover(""):
-                # --- 名前を編集機能 ---
                 input_key = f"edit_name_input_{r_name}"
 
                 # 現在表示されている名前を管理
