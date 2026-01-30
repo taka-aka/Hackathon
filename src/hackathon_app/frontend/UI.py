@@ -40,6 +40,16 @@ if "response_index" not in st.session_state:
 if "show_minutes" not in st.session_state:
     st.session_state.show_minutes = False
 
+# --- 複数ルーム管理用の初期化 ---
+if "rooms" not in st.session_state:
+    st.session_state.rooms = {
+        "トークルーム 1": {"messages": load_chat(), "minutes": "", "events": [], "show_minutes": False}
+    }
+if "current_room" not in st.session_state:
+    st.session_state.current_room = "トークルーム 1"
+
+# 現在のルームのデータを参照しやすくする
+room = st.session_state.rooms[st.session_state.current_room]
 
 # --- 【完全雑談】固定の返答リスト ---
 # 誘導する言葉を一切排除し、日常の会話っぽくしています
@@ -82,6 +92,11 @@ def buddy_typing(text):
 
 # 履歴表示
 for message in st.session_state.messages:
+
+
+# --- メイン画面: 履歴表示 (現在のルームのみ) ---
+for message in room["messages"]:
+
     avatar = "👤" if message["role"] == "user" else "😎"
 
     # 時間も表示
@@ -95,8 +110,8 @@ for message in st.session_state.messages:
 if prompt := st.chat_input("メッセージを入力"):
     now = datetime.now()
     current_time = now.strftime("%Y-%m-%d %H:%M:%S")
-    st.session_state.messages.append({"role": "user", "content": prompt, "time": current_time,})
-    save_chat(st.session_state.messages) #会話を保存
+    room["messages"].append({"role": "user", "content": prompt, "time": current_time})
+    save_chat(room["messages"]) #会話を保存
     with st.chat_message("user", avatar="👤"):
         # st.markdown(prompt)
         render_message(prompt, current_time)
@@ -112,7 +127,7 @@ if prompt := st.chat_input("メッセージを入力"):
     # --- 修正ポイント：固定返答ではなくLLMを呼び出す ---
     with st.spinner(""):
         try:
-            payload = {"messages": st.session_state.messages}
+            payload = {"messages": room["messages"]}
             res = requests.post(CHAT_API_URL, json=payload, timeout=30)
             if res.status_code == 200:
                 response_text = res.json().get("response")
@@ -122,8 +137,8 @@ if prompt := st.chat_input("メッセージを入力"):
             response_text = "バックエンドが起動してないみたい。"
 
     final_text, current_time = buddy_typing(response_text)
-    st.session_state.messages.append({"role": "assistant", "content": final_text, "time": current_time,})
-    save_chat(st.session_state.messages) #会話を保存
+    room["messages"].append({"role": "assistant", "content": final_text, "time": current_time})
+    save_chat(room["messages"]) #会話を保存
 
 # --- サイドバー ---
 #議事録作成ボタンと会話リセットボタン
@@ -131,8 +146,8 @@ with st.sidebar:
     st.write("---")
     st.write("メニュー")
     if st.button("✨ 議事録作成"):
-        st.session_state.show_minutes = False
-        if st.session_state.messages and not st.session_state.show_minutes: 
+        if room["messages"]: 
+            st.session_state.show_minutes = False # リセット 
             # 会話データを送信  
             save_chat(st.session_state.messages)
 
@@ -143,8 +158,10 @@ with st.sidebar:
 
             with st.spinner("整理してるよ..."):
                 try:
-                    payload = {"messages": st.session_state.messages}
-                    res = requests.post(BACKEND_URL+"/generate_minutes", json=payload, timeout=120)
+
+                    payload = {"messages": room["messages"]}
+                    res = requests.post(BACKEND_URL, json=payload, timeout=120)
+                    
                     if res.status_code == 200:
                         st.balloons()
                         st.session_state.minutes = res.json().get("minutes")
@@ -183,7 +200,119 @@ with st.sidebar:
                     st.success("Googleカレンダーに追加したよ！🎉")  
     
     if st.button("🔄会話リセット"):
-        # 過去の会話漏れセット
+        room["messages"] = []
+        room["minutes"] = ""
+        room["show_minutes"] = False
         reset_chat()
-        st.session_state.messages = []
         st.rerun()
+
+    st.write("---")
+    st.write("チャット")
+    if st.button("➕ 新しいチャットを作成", use_container_width=True):
+        # 重複しない名前を作る（現在の秒数などを利用）
+        timestamp = datetime.now().strftime("%H%M%S")
+        new_name = f"トークルーム {timestamp}"
+        st.session_state.rooms[new_name] = {
+            "messages": [], 
+            "minutes": "", 
+            "events": [], 
+            "show_minutes": False
+        }
+        st.session_state.current_room = new_name
+        st.rerun()
+
+    # ルーム一覧の描画
+    room_names = list(st.session_state.rooms.keys())
+    
+    for idx, r_name in enumerate(room_names):
+        col1, col2 = st.columns([0.85, 0.15])
+        with col1:
+            is_active = (st.session_state.current_room == r_name)
+            if st.button(r_name, key=f"select_{r_name}", use_container_width=True, type="primary" if is_active else "secondary"):
+                st.session_state.current_room = r_name
+                st.rerun()
+        with col2:
+            with st.popover(""):
+                # --- 名前を編集機能 ---
+                input_key = f"edit_name_input_{r_name}"
+
+                # 現在表示されている名前を管理
+                new_name = st.text_input(
+                    "このチャットの名前を変更する", 
+                    value=r_name, 
+                    key=input_key
+                )
+
+                # 入力された名前が現在の名前と違う場合のみ、保存ボタンを表示（活性化）させる
+                # strip() で空白のみの名前を防止
+                is_changed = (new_name != r_name and new_name.strip() != "")
+
+                if st.button(
+                    "✅ 名前を変更", 
+                    key=f"rename_btn_{r_name}", 
+                    use_container_width=True,
+                    disabled=not is_changed # 変更がない場合は押せない
+                ):
+                    # 順序を維持して辞書を再構築
+                    old_name = r_name
+                    final_name = new_name.strip()
+                    
+                    new_rooms = {}
+                    for k in st.session_state.rooms.keys():
+                        if k == old_name:
+                            new_rooms[final_name] = st.session_state.rooms[old_name]
+                        else:
+                            new_rooms[k] = st.session_state.rooms[k]
+                    
+                    st.session_state.rooms = new_rooms
+                    if st.session_state.current_room == old_name:
+                        st.session_state.current_room = final_name
+                    
+                    st.rerun()
+
+                # ガイドを表示
+                if is_changed:
+                    st.caption("⚠️ [名前を変更]ボタンで保存")
+                else:
+                    st.caption("名前を編集してください")
+
+                st.write("---")
+                
+                # --- 削除機能 (二重確認付き) ---
+                confirm_key = f"confirm_del_{r_name}"
+                if confirm_key not in st.session_state:
+                    st.session_state[confirm_key] = False
+
+                if not st.session_state[confirm_key]:
+                    # 最初の削除ボタン
+                    if st.button("🗑️ 削除", key=f"del_btn_{r_name}", use_container_width=True):
+                        if len(st.session_state.rooms) > 1:
+                            st.session_state[confirm_key] = True
+                            st.rerun()
+                        else:
+                            warning_placeholder = st.empty()
+                            warning_placeholder.warning("最後のルームは削除できません")
+                            # 3秒待機
+                            time.sleep(1)
+                            # 警告を消去
+                            warning_placeholder.empty()
+                            # 画面の状態をリセットするためにリロード
+                            st.rerun()
+                else:
+                    # 二重確認画面 (サイドバーの制約により列を使わず縦に配置)
+                    st.error(f"本当に「{r_name}」を削除しますか？")
+                    
+                    if st.button("✅ 削除する", key=f"yes_{r_name}", use_container_width=True, type="primary"):
+                        del st.session_state.rooms[r_name]
+                        # 削除したルームを選択していたら移動
+                        if st.session_state.current_room == r_name:
+                            st.session_state.current_room = list(st.session_state.rooms.keys())[0]
+                        
+                        # 確認フラグを削除
+                        if confirm_key in st.session_state:
+                            del st.session_state[confirm_key]
+                        st.rerun()
+                        
+                    if st.button("❌ キャンセル", key=f"no_{r_name}", use_container_width=True):
+                        st.session_state[confirm_key] = False
+                        st.rerun()
