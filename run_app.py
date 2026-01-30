@@ -20,7 +20,7 @@ def main():
         p_back = subprocess.Popen(backend_cmd)
         processes.append(p_back)
         
-        p_front = subprocess.run(frontend_cmd)
+        p_front = subprocess.Popen(frontend_cmd)
         processes.append(p_front)
 
         print("✅ 両方のプロセスが起動しました。終了するには Ctrl+C を押してください。")
