@@ -9,7 +9,6 @@ from hackathon_app.frontend.save_load import save_chat, load_chat, reset_chat
 
 # --- 設定 ---
 BACKEND_URL = "http://127.0.0.1:8000"
-CHAT_API_URL = "http://127.0.0.1:8000/chat"
 
 st.set_page_config(page_title="トーク", page_icon="💬")
 
@@ -113,7 +112,7 @@ if prompt := st.chat_input("メッセージを入力"):
     with st.spinner(""):
         try:
             payload = {"messages": st.session_state.messages}
-            res = requests.post(CHAT_API_URL, json=payload, timeout=30)
+            res = requests.post(BACKEND_URL+"/chat", json=payload, timeout=30)
             if res.status_code == 200:
                 response_text = res.json().get("response")
             else:
