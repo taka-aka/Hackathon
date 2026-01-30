@@ -3,7 +3,8 @@ from pydantic import BaseModel
 from typing import List
 import uvicorn, json, re
 # summarize_chat.pyから要約ロジックをインポート
-from hackathon_app.backend.summarize_chat import summarize_messages, chat_with_llm
+from src.hackathon_app.backend.summarize.summarize_chat import summarize_messages, chat_with_llm
+from src.hackathon_app.backend.calendar.add_reminder_to_google_calender import add_reminder
 # --- 既存の /generate_minutes はそのまま ---
 
 app = FastAPI()
@@ -58,3 +59,9 @@ async def chat_endpoint(data: ChatData):
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
+
+@app.post("/add_calendar")
+def handle_calendar(data: dict):
+    events = data.get("events")
+    result = add_reminder(events)
+    return {"status": "success"}

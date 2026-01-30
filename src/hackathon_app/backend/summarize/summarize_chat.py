@@ -12,9 +12,9 @@ if HF_TOKEN is None:
 # InferenceClientを初期化
 client = InferenceClient(token=HF_TOKEN)
 
-BASE_DIR = Path(__file__).parent
-# PROMPT_FILE_PATH = BASE_DIR.parent / "prompts" / "summarize.txt"
-PROMPT_FILE_PATH = BASE_DIR.parent / "prompts" / "minutes_events.txt"
+# BASE_DIR = Path(__file__).parent これだとbackendディレクトリを見てしまう
+# PROMPT_FILE_PATH = BASE_DIR.parent / "prompts" / "minutes_events.txt"
+PROMPT_FILE_PATH = "src/hackathon_app/prompts/minutes_events.txt"
 print("cwd:", Path.cwd())
 print("file:", Path(__file__).parent)
 
@@ -30,11 +30,9 @@ def format_conversation(messages):
 
 
 def load_prompt_template(file_path):
-    # 外部ファイルからプロンプトのテンプレートを読み込む
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"プロンプトファイルが見つかりません: {file_path}")
     
-    # encoding='utf-8'を指定して日本語文字化けを防ぐ
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()
 

@@ -1,4 +1,4 @@
-from hackathon_app.backend.setup_google_calendar import get_calendar_service
+from hackathon_app.backend.calendar.setup_google_calendar import get_calendar_service
 
 def build_event(e):
     event = {

@@ -3,14 +3,12 @@ import requests
 import time
 import random
 from datetime import datetime
-# backendフォルダを読み込めるようにパスを追加
-from hackathon_app.backend.summarize_chat import chat_with_llm # backendからインポート
+
 # st.sesson_state.messagesを保存、保存ファイルの読み込み用
 from hackathon_app.frontend.save_load import save_chat, load_chat, reset_chat
-from hackathon_app.backend.add_reminder_to_google_calender import add_reminder
 
 # --- 設定 ---
-BACKEND_URL = "http://127.0.0.1:8000/generate_minutes"
+BACKEND_URL = "http://127.0.0.1:8000"
 CHAT_API_URL = "http://127.0.0.1:8000/chat"
 
 st.set_page_config(page_title="トーク", page_icon="💬")
@@ -92,30 +90,13 @@ def buddy_typing(text):
     return full_response, current_time
 
 
-def add_google_calender():
-    events = st.session_state.events
-    if events:
-        st.success(f"予定が {len(events)}件 あったよ")
-        eventlist = {
-            f"{e['date']} {e['start_time']} {e['end_time']}: {e['title']}" : e
-            for e in events
-        }
-        selected_event_keys =st.pills(
-            label="追加したい予定を選択してね",
-            options=list(eventlist.keys()),
-            selection_mode="multi"
-        )
-        if st.button("📅 予定を反映"):
-            if not selected_event_keys:
-                st.warning("予定を選んでね！")
-            else:
-                selected_events = [eventlist[k] for k in selected_event_keys]
-                add_reminder(selected_events)
-                st.success("Googleカレンダーに追加したよ！🎉")
+# 履歴表示
+for message in st.session_state.messages:
 
 
 # --- メイン画面: 履歴表示 (現在のルームのみ) ---
 for message in room["messages"]:
+
     avatar = "👤" if message["role"] == "user" else "😎"
 
     # 時間も表示
@@ -177,8 +158,10 @@ with st.sidebar:
 
             with st.spinner("整理してるよ..."):
                 try:
+
                     payload = {"messages": room["messages"]}
                     res = requests.post(BACKEND_URL, json=payload, timeout=120)
+                    
                     if res.status_code == 200:
                         st.balloons()
                         st.session_state.minutes = res.json().get("minutes")
@@ -194,8 +177,27 @@ with st.sidebar:
         st.info(st.session_state.minutes)
         st.download_button("メモを保存", st.session_state.minutes, "memo.txt")
 
-        add_google_calender()        
+        events = st.session_state.events
+        if events:
+            st.success(f"予定が {len(events)}件 あったよ")
+            eventlist = {
+                f"{e['date']} {e['start_time']} {e['end_time']}: {e['title']}" : e
+                for e in events
+            }
+            selected_event_keys =st.pills(
+                label="追加したい予定を選択してね",
+                options=list(eventlist.keys()),
+                selection_mode="multi"
+            )
 
+        if st.button("📅 予定を反映"):
+            if not selected_event_keys:
+                st.warning("予定を選んでね！")
+            else:
+                payload = {"events": st.session_state.events}
+                res = requests.post(BACKEND_URL+"/add_calendar", json=payload)
+                if res.status_code == 200:
+                    st.success("Googleカレンダーに追加したよ！🎉")  
     
     if st.button("🔄会話リセット"):
         room["messages"] = []
