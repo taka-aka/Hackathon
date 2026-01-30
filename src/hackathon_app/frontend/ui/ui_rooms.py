@@ -1,4 +1,5 @@
 import streamlit as st
+import time
 from datetime import datetime
 from hackathon_app.frontend.save_load import load_chat, reset_chat
 
@@ -10,6 +11,8 @@ def init_rooms():
         }
     if "current_room" not in st.session_state:
         st.session_state.current_room = "トークルーム 1"
+    if "delete_confirm_room" not in st.session_state:
+        st.session_state.delete_confirm_room = None
 
 
 def get_current_room():
@@ -31,32 +34,42 @@ def switch_room(room_name):
 
 
 def rename_room(old_name, new_name):
-    if not new_name.strip() or old_name not in st.session_state.rooms:
-        return
-    new_rooms = {}
-    for k, v in st.session_state.rooms.items():
-        if k == old_name:
-            new_rooms[new_name.strip()] = v
-    else:
-        new_rooms[k] = v                 
-    st.session_state.rooms = new_rooms
+    new_name = new_name.strip()
+    rooms = st.session_state.rooms
+    rooms[new_name] = rooms.pop(old_name)
+
+    if st.session_state.current_room == old_name:
+        st.session_state.current_room = new_name
     
 
 def delete_room(room_name):
-    if room_name not in st.session_state.rooms:
-        return
-
     if len(st.session_state.rooms) == 1:
-        st.warning("最後のルームは削除できません")
+        if st.button("🗑️ 削除", key=f"del_{room_name}", use_container_width=True):
+            st.warning("最後のルームは削除できません")
         return
-    
-    del st.session_state.rooms[room_name]
 
-    # 削除したルームが選択中なら最初のルームに切り替え
-    if st.session_state.current_room == room_name:
-        st.session_state.current_room = list(st.session_state.rooms.keys())[0]
-    st.rerun()
+    # まだ確認段階じゃない
+    if st.session_state.delete_confirm_room != room_name:
+        if st.button("🗑️ 削除", key=f"del_{room_name}", use_container_width=True):
+            st.session_state.delete_confirm_room = room_name
+            st.rerun()
+        return
 
+    # 確認段階
+    st.error(f"本当に「{room_name}」を削除しますか？")
+
+    if st.button("✅ 削除する", key=f"yes_{room_name}", use_container_width=True):
+        del st.session_state.rooms[room_name]
+
+        if st.session_state.current_room == room_name:
+            st.session_state.current_room = list(st.session_state.rooms.keys())[0]
+
+        st.session_state.delete_confirm_room = None
+        st.rerun()
+
+    if st.button("❌ キャンセル", key=f"no_{room_name}", use_container_width=True):
+        st.session_state.delete_confirm_room = None
+        st.rerun()
 
 def reset_current_room():
     room = get_current_room()

@@ -10,7 +10,7 @@ os.environ["PYTHONIOENCODING"] = "UTF-8"
 def main():
     # 起動コマンドの設定
     backend_cmd = [sys.executable, "-m", "uvicorn", "hackathon_app.backend.main:app", "--reload"]
-    frontend_cmd = [sys.executable, "-m", "streamlit", "run", "src/hackathon_app/frontend/UI.py"]
+    frontend_cmd = [sys.executable, "-m", "streamlit", "run", "src/hackathon_app/frontend/ui/UI.py"]
 
     print("🚀 開発環境を起動中...")
 
@@ -20,7 +20,7 @@ def main():
         p_back = subprocess.Popen(backend_cmd)
         processes.append(p_back)
         
-        p_front = subprocess.Popen(frontend_cmd)
+        p_front = subprocess.run(frontend_cmd)
         processes.append(p_front)
 
         print("✅ 両方のプロセスが起動しました。終了するには Ctrl+C を押してください。")

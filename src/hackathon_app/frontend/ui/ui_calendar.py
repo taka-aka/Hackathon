@@ -1,5 +1,6 @@
 import streamlit as st
-from hackathon_app.backend.calendar.add_reminder_to_google_calender import add_reminder
+import requests
+from hackathon_app.frontend.ui.ui_settings import CALENDAR_API_URL
 
 def select_reminder(events):
     if not events:
@@ -19,5 +20,7 @@ def select_reminder(events):
             st.warning("予定を選んでね！")
         else:
             selected_events = [eventlist[k] for k in selected_event_keys]
-            add_reminder(selected_events)
-            st.success("Googleカレンダーに追加したよ！🎉")
+            payload = {"events": selected_events}
+            res = requests.post(CALENDAR_API_URL, json=payload)
+            if res.status_code == 200:
+                st.success("Googleカレンダーに追加したよ！🎉")  

@@ -18,5 +18,16 @@ CSS = """
     div[data-testid="stChatMessage"]:has(div[aria-label="Chat message from assistant"]) div[data-testid="stMarkdownContainer"] {
         background-color: #FFFFFF; color: #000; padding: 10px 15px; border-radius: 15px 15px 15px 2px; display: inline-block; margin-left: 10px;
     }
+
+    /*expanderの配色*/
+    div[data-testid="stExpander"] summary {
+    background-color: #e0e0e0 !important;
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+    }
+    div[data-testid="stExpander"] summary:hover {
+    background-color: #cfcfcf  !important;
+    }
+
     </style>
     """

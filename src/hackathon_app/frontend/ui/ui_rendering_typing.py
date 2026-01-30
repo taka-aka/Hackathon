@@ -25,4 +25,3 @@ def buddy_typing(text):
             # 友達がスマホを打つようなランダムな速さ
             time.sleep(random.uniform(0.02, 0.06))
         placeholder.markdown(full_response)
-    return full_response
