@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from src.hackathon_app.backend.calendar.add_reminder_to_google_calender import add_reminder
+from hackathon_app.backend.calendar.add_reminder_to_google_calender import add_reminder
 
 router = APIRouter(prefix="/add_reminder")
 
