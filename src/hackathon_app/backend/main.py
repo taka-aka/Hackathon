@@ -5,9 +5,14 @@ import uvicorn, json, re
 # summarize_chat.pyから要約ロジックをインポート
 from src.hackathon_app.backend.summarize.summarize_chat import summarize_messages, chat_with_llm
 from src.hackathon_app.backend.calendar.add_reminder_to_google_calender import add_reminder
-# --- 既存の /generate_minutes はそのまま ---
+from src.hackathon_app.backend.database import init_db, save_message, get_all_messages, delete_all_messages
 
 app = FastAPI()
+
+# データベースの初期化
+@app.on_event("startup")
+def on_startup():
+    init_db()
 
 # リクエストデータの構造を定義
 class Message(BaseModel):
@@ -65,3 +70,21 @@ def handle_calendar(data: dict):
     events = data.get("events")
     result = add_reminder(events)
     return {"status": "success"}
+
+# --- 履歴取得用のエンドポイント ---
+@app.get("/history")
+async def history_endpoint():
+    try:
+        messages = get_all_messages()
+        return {"messages": messages}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- リセット用のエンドポイント ---
+@app.post("/reset")
+async def reset_endpoint():
+    try:
+        delete_all_messages()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
