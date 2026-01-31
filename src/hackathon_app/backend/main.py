@@ -7,7 +7,7 @@ from datetime import datetime
 from src.hackathon_app.backend.summarize.summarize_chat import summarize_messages, chat_with_llm
 from src.hackathon_app.backend.calendar.add_reminder_to_google_calender import add_reminder
 from src.hackathon_app.backend.database import (
-    init_db, save_message, get_messages_by_room, 
+    init_db, save_message, get_messages_by_room_id, 
     get_rooms, create_room, rename_room_db, delete_room_db
 )
 app = FastAPI()
@@ -48,37 +48,41 @@ class RenameRoomData(BaseModel):
     old_name: str
     new_name: str
 
-@app.get("/rooms")
-async def fetch_rooms():
-    """ルーム名の一覧を返す"""
-    return {"rooms": get_rooms()}
+@app.get("/rooms/get")
+async def load_room():
+    try:
+        return get_rooms()  # {"1": "トークルーム 1", "2": "トークルーム 2", ...} という辞書で返します。
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/rooms/{room_id}/messages")
+async def load_messages(room_id: int):
+    try:
+        return get_messages_by_room_id(room_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/rooms/create")
 async def make_room(name: str):
-    """新しいルームを作成する"""
-    create_room(name)
-    return {"status": "success"}
+    try:
+        create_room(name)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/rooms/rename")
 async def rename_room(data: RenameRoomData):
-    """ルーム名を変更する"""
-    rename_room_db(data.old_name, data.new_name)
-    return {"status": "success"}
-
-@app.delete("/rooms/{name}")
-async def delete_room(name: str):
-    """ルームを削除する（メッセージも連動して消える）"""
-    delete_room_db(name)
-    return {"status": "success"}
-
-# --- 履歴取得用のエンドポイント ---
-@app.get("/history/{room_name}")
-async def history_endpoint():
     try:
-        messages = get_messages_by_room(room_name)
-        return {"messages": messages}
+        rename_room_db(data.old_name, data.new_name)
+        return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/rooms/{room_id}")
+async def delete_room(room_id: int):
+    """ルームを削除する（メッセージも連動して消える）"""
+    delete_room_db(room_id)
+    return {"status": "success"}
 
 @app.post("/chat")
 async def chat_endpoint(data: ChatData, room_name: str):
@@ -125,13 +129,29 @@ def handle_calendar(data: dict):
     result = add_reminder(events)
     return {"status": "success"}
 
-
-
-# --- リセット用のエンドポイント ---
-@app.post("/reset")
-async def reset_endpoint():
+@app.post("/rooms/{room_id}/messages")
+async def save_message_endpoint(room_id: int, data: Message):
+    """
+    フロントエンドからメッセージを受け取り、指定されたルーム名に保存する
+    """
     try:
-        delete_all_messages()
+        # database.py の関数を呼び出し
+        database.save_message_to_db(
+            room_name=room_name,
+            role=data.role,
+            content=data.content,
+            time_str=data.time
+        )
+        return {"status": "success", "message": "Message saved successfully"}
+    except Exception as e:
+        # データベースエラーなどが発生した場合
+        raise HTTPException(status_code=500, detail=f"Database Error: {str(e)}")
+
+# --- ルームのチャットをリセット---
+@app.delete("/room/{room_id}/reset")
+async def reset_endpoint(room_id: int):
+    try:
+        delete_all_messages(room_id)
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
