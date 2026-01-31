@@ -44,7 +44,8 @@ if prompt := st.chat_input("メッセージを入力"):
     with st.spinner(""):
         try:
             payload = {"messages": room["messages"]}
-            res = requests.post(CHAT_API_URL, json=payload, timeout=30)
+            params = {"room_name": st.session_state.current_room}
+            res = requests.post(CHAT_API_URL, json=payload, params=params, timeout=30)
             if res.status_code == 200:
                 response_text = res.json().get("response")
             else:
