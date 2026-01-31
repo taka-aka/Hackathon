@@ -14,6 +14,25 @@ app = FastAPI()
 def on_startup():
     init_db()
 
+
+def extract_json(text: str) -> dict:
+    start = text.find("{")
+    end = text.rfind("}") + 1
+
+    if start == -1 or end == -1:
+         raise ValueError("JOSNが見つかりません")
+    
+    json_str = text[start:end]
+    print(json_str)
+    try:
+        summary_json = json.loads(json_str)
+    except json.JSONDecodeError:
+            summary_json = {
+                "minutes": json_str,
+                "events": []
+            }
+    return summary_json
+
 # リクエストデータの構造を定義
 class Message(BaseModel):
     role: str
@@ -35,16 +54,9 @@ async def generate_minutes(data: ChatData):
         if summary is None:
             raise HTTPException(status_code=500, detail="LLMによる要約に失敗しました。")  
         # return {"minutes": summary}
-        
-        # print(summary)
-        clean_summary = re.sub(r"```json|```", "", summary).strip()
-        try:
-            summary_json = json.loads(clean_summary)
-        except json.JSONDecodeError:
-            summary_json = {
-                "minutes": clean_summary,
-                "events": []
-            }
+    
+        print(summary)
+        summary_json = extract_json(summary)
         return summary_json
 
     except Exception as e:
@@ -65,7 +77,7 @@ async def chat_endpoint(data: ChatData):
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
 
-@app.post("/add_calendar")
+@app.post("/add_reminder")
 def handle_calendar(data: dict):
     events = data.get("events")
     result = add_reminder(events)
@@ -88,3 +100,6 @@ async def reset_endpoint():
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="127.0.0.1", port=8000)
