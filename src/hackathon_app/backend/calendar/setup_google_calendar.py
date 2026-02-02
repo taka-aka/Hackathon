@@ -11,14 +11,20 @@ load_dotenv()
 
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 
-CREDENTIALS_PATH = Path(os.getenv("GOOGLE_CREDENTIALS_PATH"))
-TOKEN_PATH = Path(os.getenv("GOOGLE_TOKEN_PATH"))
+# 環境変数が取れなかった場合の安全策（ガード）を追加
+env_creds = os.getenv("GOOGLE_CREDENTIALS_PATH")
+env_token = os.getenv("GOOGLE_TOKEN_PATH")
+
+# 環境変数が取れなかったら "credentials.json" という文字を代わりに使う
+CREDENTIALS_PATH = Path(env_creds) if env_creds else Path("credentials.json")
+TOKEN_PATH = Path(env_token) if env_token else Path("token.json")
 
 def get_calendar_service():
     creds = None
 
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+    # ハードコード（"token.json"など）を、上で定義した変数に置き換え
+    if TOKEN_PATH.exists():
+        creds = Credentials.from_authorized_user_file(str(TOKEN_PATH), SCOPES)
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
