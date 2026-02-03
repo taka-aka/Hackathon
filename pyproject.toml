@@ -10,6 +10,7 @@ dependencies = [
     "requests",
     "huggingface_hub",
     "python-dotenv",
+    "sqlalchemy"
 ]
 
 [tool.setuptools]

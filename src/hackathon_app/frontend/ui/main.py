@@ -41,17 +41,31 @@ if prompt := st.chat_input("メッセージを入力"):
     with st.chat_message("user", avatar="👤"):
         render_message(prompt, current_time)
 
-    with st.spinner(""):
+    with st.spinner("通信中..."):
         try:
+            room_name = st.session_state.current_room
+            api_url = f"{CHAT_API_URL}/{room_name}"
             payload = {"messages": room["messages"]}
-            res = requests.post(CHAT_API_URL, json=payload, timeout=30)
+        
+            # 送信直前のデータをログに出す
+            print(f"DEBUG: Sending to {api_url}, payload: {payload}")
+        
+            res = requests.post(api_url, json=payload, timeout=30)
+        
             if res.status_code == 200:
                 response_text = res.json().get("response")
             else:
-                response_text = "通信エラーになっちゃった。"
-        except:
-            response_text = "バックエンドが起動してないみたい。"
-
+                # バックエンドから返ってきたエラー詳細を表示
+                error_detail = res.json().get('detail', '不明なエラー')
+                response_text = f"サーバーエラー ({res.status_code}): {error_detail}"
+                print(f"DEBUG: Server Error: {res.text}")
+            
+        except requests.exceptions.ConnectionError:
+            response_text = "サーバーに接続できません。バックエンドが起動しているか確認してください。"
+        except Exception as e:
+            response_text = f"フロントエンドで例外発生: {str(e)}"
+            print(f"DEBUG: Exception: {e}")
+            
     buddy_typing(response_text)
     now = datetime.now()
     current_time = now.strftime("%Y-%m-%d %H:%M:%S")
