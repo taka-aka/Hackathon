@@ -1,0 +1,24 @@
+# Pythonキャッシュ
+__pycache__/
+*.pyc
+
+# 仮想環境
+venv/
+.env/
+
+# OS系
+.DS_Store
+Thumbs.db
+
+#トークン
+.env
+token.json
+credentials.json
+chat_log.json
+
+#pip install -eを実行したときに自動で作られるファイル
+*.egg-info/
+build/
+
+#DBファイル
+src/hackathon_app/backend/test_group_app.db
