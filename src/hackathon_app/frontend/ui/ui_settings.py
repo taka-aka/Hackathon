@@ -1,6 +1,8 @@
-MINUTES_API_URL = "http://127.0.0.1:8000/generate_minutes"
-CHAT_API_URL = "http://127.0.0.1:8000/chat"
-CALENDAR_API_URL = "http://127.0.0.1:8000/add_reminder"
+MINUTES_API_URL = "http://127.0.0.1:8000/generate_minutes/"
+CHAT_API_URL = "http://127.0.0.1:8000/chat/"
+CALENDAR_API_URL = "http://127.0.0.1:8000/add_reminder/"
+ROOMS_API_URL = "http://127.0.0.1:8000/rooms"
+ROOM_API_URL = "http://127.0.0.1:8000/room"
 
 PAGE_CONFIG = {
     "page_title": "トーク",

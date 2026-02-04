@@ -6,5 +6,5 @@ router = APIRouter(prefix="/add_reminder")
 @router.post("/")
 def handle_calendar(data: dict):
     events = data.get("events")
-    result = add_reminder(events)
+    add_reminder(events)
     return {"status": "success"}
