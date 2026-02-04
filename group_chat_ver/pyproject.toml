@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hackathon-app"
+version = "0.1.0"
+dependencies = [
+    "streamlit",
+    "requests",
+    "huggingface_hub",
+    "python-dotenv",
+    "sqlalchemy"
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+hackathon_app = ["prompts/*.txt"]
