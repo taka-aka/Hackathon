@@ -6,7 +6,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "app.db")
 
 def get_connection():
-    """データベースへの接続を取得する"""
+    # データベースへの接続を取得する
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row    # 取得結果を辞書形式（dict）で扱えるようにする設定
 
@@ -77,42 +77,26 @@ def delete_room_db(id):
         conn.commit()
 
 # --- メッセージ操作 ---
-
-def save_message(room_name, role, content, time_str):
-    with get_connection() as conn:
-        # ルーム名からIDを検索して保存
-        conn.execute("""
-            INSERT INTO messages (room_id, role, content, time)
-            SELECT id, ?, ?, ? FROM rooms WHERE name = ?
-        """, (role, content, time_str, room_name))
-        conn.commit()
-
-def save_message_to_db(room_name, role, content, time_str):
-    """
-    指定されたルーム名に紐づけて、新しいメッセージを1件保存する
-    """
-    with get_connection() as conn:
-        # 1. room_nameから該当するroom_idを取得
-        cursor = conn.execute("SELECT id FROM rooms WHERE name = ?", (room_name,))
-        row = cursor.fetchone()
-        
-        if row:
-            room_id = row["id"]
-            # 2. messagesテーブルにデータを挿入
-            conn.execute("""
-                INSERT INTO messages (room_id, role, content, time)
-                VALUES (?, ?, ?, ?)
-            """, (room_id, role, content, time_str))
-            conn.commit()
-        else:
-            # ルームが存在しない場合のエラーハンドリング（必要に応じて）
-            print(f"Error: Room '{room_name}' not found.")
-
 def delete_room_messages(room_id: int):
-    """
-    指定された room_id に紐づくメッセージ履歴をすべて削除する
-    """
+    # 指定された room_id に紐づくメッセージ履歴をすべて削除する
     with get_connection() as conn:
         # 指定した room_id のメッセージのみを削除
         conn.execute("DELETE FROM messages WHERE room_id = ?", (room_id,))
+        conn.commit()
+
+
+def save_messages_by_room_id(room_id, messages: list):
+    rows = [
+        (room_id, msg["role"], msg["content"], msg["time"])  # ここを変更
+        for msg in messages
+    ]
+
+    with get_connection() as conn:
+        cursor = conn.executemany("""
+            INSERT INTO messages (room_id, role, content, time)
+            VALUES (?, ?, ?, ?)
+        """, rows)
+
+        if cursor.rowcount == 0:
+            raise ValueError(f"Failed to insert message (room_id={room_id})")
         conn.commit()
