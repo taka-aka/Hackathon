@@ -2,12 +2,12 @@ import streamlit as st
 import requests
 from datetime import datetime
 
-# st.sesson_state.messagesを保存、保存ファイルの読み込み用
-from hackathon_app.frontend.save_load import save_chat, load_chat, reset_chat
-from hackathon_app.frontend.ui.ui_settings import MINUTES_API_URL, CHAT_API_URL, PAGE_CONFIG, CSS
+from hackathon_app.backend.database import init_db
+init_db()
+from hackathon_app.frontend.ui.ui_settings import MINUTES_API_URL, CHAT_API_URL, ROOMS_API_URL, PAGE_CONFIG, CSS
 from hackathon_app.frontend.ui.ui_rendering_typing import render_message, buddy_typing
 from hackathon_app.frontend.ui.ui_calendar import select_reminder
-from hackathon_app.frontend.ui.ui_rooms import init_rooms, get_current_room, create_new_room, switch_room, rename_room, delete_room, reset_current_room
+from hackathon_app.frontend.ui.ui_rooms import init_rooms, load_room_messages, save_room_messages, create_new_room, switch_room, rename_room, delete_room, reset_current_room
 
 st.set_page_config(**PAGE_CONFIG)
 st.markdown(CSS, unsafe_allow_html=True)
@@ -19,38 +19,35 @@ if "events" not in st.session_state:
 if "show_minutes" not in st.session_state:
     st.session_state.show_minutes = False
 
-
-init_rooms()
-room = get_current_room()
+rooms = init_rooms()
+current_room_id = int(st.session_state.current_room_id)
+current_room_name = st.session_state.current_room_name
+messages = load_room_messages(current_room_id)
+if "messages" not in st.session_state:
+    st.session_state.messages = messages
 
 # --- メイン画面: 履歴表示 (現在のルームのみ) ---
-for message in room["messages"]:
-    avatar = "👤" if message["role"] == "user" else "😎"
+for msg in st.session_state.messages:
+    avatar = "👤" if msg["role"] == "user" else "😎"
 
-    time_str = message.get("time", "")
+    time_str = msg.get("time", "")
 
-    with st.chat_message(message["role"], avatar=avatar):
-        render_message(message["content"], time_str)
+    with st.chat_message(msg["role"], avatar=avatar):
+        render_message(msg["content"], time_str)
         
 # --- チャット入力 ---
 if prompt := st.chat_input("メッセージを入力"):
     now = datetime.now()
     current_time = now.strftime("%Y-%m-%d %H:%M:%S")
-    room["messages"].append({"role": "user", "content": prompt, "time": current_time})
-    save_chat(room["messages"]) #会話を保存
+    st.session_state.messages.append({"role": "user", "content": prompt, "time": current_time})
+    save_room_messages(current_room_id, st.session_state.messages) #会話を保存
     with st.chat_message("user", avatar="👤"):
         render_message(prompt, current_time)
 
     with st.spinner("通信中..."):
         try:
-            room_name = st.session_state.current_room
-            api_url = f"{CHAT_API_URL}/{room_name}"
-            payload = {"messages": room["messages"]}
-        
-            # 送信直前のデータをログに出す
-            print(f"DEBUG: Sending to {api_url}, payload: {payload}")
-        
-            res = requests.post(api_url, json=payload, timeout=30)
+            payload = {"messages": st.session_state.messages}
+            res = requests.post(CHAT_API_URL, json=payload, timeout=30)
         
             if res.status_code == 200:
                 response_text = res.json().get("response")
@@ -69,20 +66,20 @@ if prompt := st.chat_input("メッセージを入力"):
     buddy_typing(response_text)
     now = datetime.now()
     current_time = now.strftime("%Y-%m-%d %H:%M:%S")
-    room["messages"].append({"role": "assistant", "content": response_text, "time": current_time})
-    save_chat(room["messages"])
+    st.session_state.messages.append({"role": "assistant", "content": response_text, "time": current_time})
+    save_room_messages(current_room_id, st.session_state.messages)
 
 # --- サイドバー ---
 with st.sidebar:
     st.write("---")
     st.write("メニュー")
     if st.button("✨ 議事録作成"):
-        if room["messages"]: 
+        if messages: 
             st.session_state.show_minutes = False # リセット 
 
             with st.spinner("整理してるよ..."):
                 try:
-                    payload = {"messages": room["messages"]}
+                    payload = {"messages": messages}
                     res = requests.post(MINUTES_API_URL, json=payload, timeout=120)
                     if res.status_code == 200:
                         st.balloons()
@@ -101,51 +98,55 @@ with st.sidebar:
         select_reminder(st.session_state.events)   
     
     if st.button("🔄会話リセット"):
-        reset_current_room()
+        reset_current_room(current_room_id)
 
     st.write("---")
-    st.write("チャット")
+    st.write("ルーム選択")
     if st.button("➕ 新しいチャットを作成", use_container_width=True):
         create_new_room()
-    for r_name in st.session_state.rooms.keys():
-        is_active = (st.session_state.current_room == r_name)
+
+    for room_id, room_name in rooms.items():
+        is_active = (current_room_id == int(room_id))
         if st.button(
-            r_name,
-            key=f"select_{r_name}",
+            room_name,
+            key=f"select_{room_id}",
             use_container_width=True,
             type="primary" if is_active else "secondary"
         ):
-            switch_room(r_name)
-    
-        with st.expander(f"{r_name}の設定"):
-            input_key = f"edit_name_input_{r_name}"
+            switch_room(room_name, room_id)
+
+        with st.expander(f"{room_name}の設定"):
+            input_key = f"edit_name_input_{room_name}"
 
             # 現在表示されている名前を管理
             new_name = st.text_input(
                 "このチャットの名前を変更する", 
-                value=r_name, 
+                value=room_name, 
                 key=input_key
             )
 
-            # 入力された名前が現在の名前と違う場合のみ、保存ボタンを表示（活性化）させる
-            # strip() で空白のみの名前を防止
-            is_changed = (new_name != r_name and new_name.strip() != "")
+            is_not_empty = new_name.strip() != ""
+            is_not_duplicate = new_name not in rooms.values()
+            is_changed = (new_name != room_name and is_not_empty and is_not_duplicate)
 
             if st.button(
                 "✅ 名前を変更", 
-                key=f"rename_btn_{r_name}", 
+                key=f"rename_btn_{room_id}", 
                 use_container_width=True,
                 disabled=not is_changed # 変更がない場合は押せない
             ):
                 # 順序を維持して辞書を再構築
-                rename_room(r_name, new_name)
-                st.rerun()
+                rename_room(room_name, new_name.strip())
 
             # ガイドを表示
-            if is_changed:
+            if not is_not_empty:
+                st.caption("名前を空にすることはできません")
+            elif not is_not_duplicate:
+                st.caption("⚠️ 他のルーム名と重複しています")
+            elif is_changed:
                 st.caption("⚠️ [名前を変更]ボタンで保存")
             else:
                 st.caption("名前を編集してください")
 
             st.write("---")
-            delete_room(r_name)
+            delete_room(room_name, int(room_id))
