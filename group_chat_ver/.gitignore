@@ -21,4 +21,4 @@ chat_log.json
 build/
 
 #DBファイル
-src/hackathon_app/backend/app.db
+src/hackathon_app/backend/test_group_app.db

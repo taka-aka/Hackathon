@@ -9,7 +9,7 @@ def chat_with_llm(messages):
         {"role": "system", "content": "あなたは親しみやすい友達です。タメ口で、短く自然な日本語で返答してください。"}
     ]
     for msg in messages[-10:]:
-        api_messages.append({"role": msg["role"], "content": msg["content"]})
+        api_messages.append({"name": msg["username"], "content": msg["content"], "time": msg["time"]})
 
     try:
         summary = call_ai_model(

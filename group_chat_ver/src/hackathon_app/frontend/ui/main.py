@@ -5,9 +5,10 @@ from datetime import datetime
 from hackathon_app.backend.database import init_db
 init_db()
 from hackathon_app.frontend.ui.ui_settings import MINUTES_API_URL, CHAT_API_URL, ROOMS_API_URL, PAGE_CONFIG, CSS
-from hackathon_app.frontend.ui.ui_rendering_typing import render_message, buddy_typing
+from hackathon_app.frontend.ui.ui_rendering import render_message
 from hackathon_app.frontend.ui.ui_calendar import select_reminder
 from hackathon_app.frontend.ui.ui_rooms import init_rooms, load_room_messages, save_room_messages, create_new_room, switch_room, rename_room, delete_room, reset_current_room
+from hackathon_app.frontend.ui.ui_login import init_username
 
 st.set_page_config(**PAGE_CONFIG)
 st.markdown(CSS, unsafe_allow_html=True)
@@ -19,67 +20,81 @@ if "events" not in st.session_state:
 if "show_minutes" not in st.session_state:
     st.session_state.show_minutes = False
 
-rooms = init_rooms()
+rooms = init_rooms() # (st.session_state) current_room_id, current_room_name を取得
+
 current_room_id = int(st.session_state.current_room_id)
 current_room_name = st.session_state.current_room_name
-messages = load_room_messages(current_room_id)
 if "messages" not in st.session_state:
-    st.session_state.messages = messages
+    # user_id, username, avatar, content, time を取得
+    st.session_state.messages = load_room_messages(current_room_id)
 
-# --- メイン画面: 履歴表示 (現在のルームのみ) ---
+init_username() # (st.session_state) user_id, username, avatar を取得
+
 for msg in st.session_state.messages:
-    avatar = "👤" if msg["role"] == "user" else "😎"
+    is_me = (msg["user_id"] == st.session_state.user_id)
 
-    time_str = msg.get("time", "")
-
-    with st.chat_message(msg["role"], avatar=avatar):
-        render_message(msg["content"], time_str)
+    with st.chat_message(
+        "user" if is_me else "assistant",
+        avatar=msg["avatar"]
+    ):
+        render_message(msg, is_me, msg["time"])
         
 # --- チャット入力 ---
 if prompt := st.chat_input("メッセージを入力"):
     now = datetime.now()
     current_time = now.strftime("%Y-%m-%d %H:%M:%S")
-    st.session_state.messages.append({"role": "user", "content": prompt, "time": current_time})
-    save_room_messages(current_room_id, st.session_state.messages) #会話を保存
-    with st.chat_message("user", avatar="👤"):
-        render_message(prompt, current_time)
 
-    with st.spinner("通信中..."):
-        try:
-            payload = {"messages": st.session_state.messages}
-            res = requests.post(CHAT_API_URL, json=payload, timeout=30)
+    st.session_state.messages.append({
+        "user_id": st.session_state.user_id,
+        "username": st.session_state.username,
+        "avatar": st.session_state.avatar,
+        "content": prompt,
+        "time": current_time
+    })
+    save_room_messages(current_room_id, st.session_state.messages) #会話を保存
+    st.rerun()
+
+
+    # with st.chat_message("user", avatar="👤"):
+        # render_message(prompt, current_time)
+
+    # with st.spinner("通信中..."):
+    #     try:
+    #         payload = {"messages": st.session_state.messages}
+    #         res = requests.post(CHAT_API_URL, json=payload, timeout=30)
         
-            if res.status_code == 200:
-                response_text = res.json().get("response")
-            else:
-                # バックエンドから返ってきたエラー詳細を表示
-                error_detail = res.json().get('detail', '不明なエラー')
-                response_text = f"サーバーエラー ({res.status_code}): {error_detail}"
-                print(f"DEBUG: Server Error: {res.text}")
+    #         if res.status_code == 200:
+    #             response_text = res.json().get("response")
+    #         else:
+    #             # バックエンドから返ってきたエラー詳細を表示
+    #             error_detail = res.json().get('detail', '不明なエラー')
+    #             response_text = f"サーバーエラー ({res.status_code}): {error_detail}"
+    #             print(f"DEBUG: Server Error: {res.text}")
             
-        except requests.exceptions.ConnectionError:
-            response_text = "サーバーに接続できません。バックエンドが起動しているか確認してください。"
-        except Exception as e:
-            response_text = f"フロントエンドで例外発生: {str(e)}"
-            print(f"DEBUG: Exception: {e}")
+    #     except requests.exceptions.ConnectionError:
+    #         response_text = "サーバーに接続できません。バックエンドが起動しているか確認してください。"
+    #     except Exception as e:
+    #         response_text = f"フロントエンドで例外発生: {str(e)}"
+    #         print(f"DEBUG: Exception: {e}")
             
-    buddy_typing(response_text)
-    now = datetime.now()
-    current_time = now.strftime("%Y-%m-%d %H:%M:%S")
-    st.session_state.messages.append({"role": "assistant", "content": response_text, "time": current_time})
-    save_room_messages(current_room_id, st.session_state.messages)
+    # buddy_typing(response_text)
+    # now = datetime.now()
+    # current_time = now.strftime("%Y-%m-%d %H:%M:%S")
+    # st.session_state.messages.append({"role": "assistant", "content": response_text, "time": current_time})
+    # save_room_messages(current_room_id, st.session_state.messages)
 
 # --- サイドバー ---
 with st.sidebar:
     st.write("---")
     st.write("メニュー")
     if st.button("✨ 議事録作成"):
-        if messages: 
+        if st.session_state.messages: 
             st.session_state.show_minutes = False # リセット 
 
             with st.spinner("整理してるよ..."):
                 try:
-                    payload = {"messages": messages}
+                    
+                    payload = {"messages": st.session_state.messages}
                     res = requests.post(MINUTES_API_URL, json=payload, timeout=120)
                     if res.status_code == 200:
                         st.balloons()
