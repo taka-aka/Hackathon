@@ -1,7 +1,16 @@
 import sys
 import os
-sys.path.append(r"D:\Keikin_house\VScode_Workspace\Hackathon\Hackathon\src")
+# --- パス設定の修正 ---
+# このファイル（app.pyなど）がある場所の親フォルダ（src）を自動的に取得
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# もしこのファイルが src の中にあるなら、そのパスを append する
+if current_dir not in sys.path:
+    sys.path.append(current_dir)
 
+# もし構造上、一つ上の階層をパスに入れる必要がある場合はこちら：
+# parent_dir = os.path.dirname(current_dir)
+# sys.path.append(parent_dir)
+# ---------------------
 
 import streamlit as st
 import requests
